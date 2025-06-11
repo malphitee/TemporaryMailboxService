@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"net/http"
+	"strconv"
+	"time"
 
 	"temp-mailbox-service/internal/infrastructure/auth"
 
@@ -176,6 +178,184 @@ func RateLimiterMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// TODO: 实现基于IP或用户的速率限制
 		// 目前暂时跳过
+		c.Next()
+	}
+}
+
+// JWTAuth JWT认证中间件
+func JWTAuth(jwtService auth.JWTService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 从Authorization头获取令牌
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "未提供认证令牌",
+				"code":  "MISSING_TOKEN",
+			})
+			c.Abort()
+			return
+		}
+		
+		// 提取Bearer令牌
+		token := auth.ExtractTokenFromHeader(authHeader)
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "令牌格式错误",
+				"code":  "INVALID_TOKEN_FORMAT",
+			})
+			c.Abort()
+			return
+		}
+		
+		// 验证令牌
+		claims, err := jwtService.ValidateAccessToken(token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "令牌无效或已过期",
+				"code":  "INVALID_TOKEN",
+			})
+			c.Abort()
+			return
+		}
+		
+		// 将用户信息存储到上下文中
+		c.Set("user_id", claims.UserID)
+		c.Set("username", claims.Username)
+		c.Set("email", claims.Email)
+		
+		// 继续处理请求
+		c.Next()
+	}
+}
+
+// GetUserIDFromContext 从上下文中获取用户ID
+func GetUserIDFromContext(c *gin.Context) (uint, error) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		return 0, gin.Error{Err: gin.Error{}.Err, Type: gin.ErrorTypePublic}
+	}
+	
+	if id, ok := userID.(uint); ok {
+		return id, nil
+	}
+	
+	return 0, gin.Error{Err: gin.Error{}.Err, Type: gin.ErrorTypePublic}
+}
+
+// GetUsernameFromContext 从上下文中获取用户名
+func GetUsernameFromContext(c *gin.Context) (string, bool) {
+	username, exists := c.Get("username")
+	if !exists {
+		return "", false
+	}
+	
+	if name, ok := username.(string); ok {
+		return name, true
+	}
+	
+	return "", false
+}
+
+// GetEmailFromContext 从上下文中获取邮箱
+func GetEmailFromContext(c *gin.Context) (string, bool) {
+	email, exists := c.Get("email")
+	if !exists {
+		return "", false
+	}
+	
+	if addr, ok := email.(string); ok {
+		return addr, true
+	}
+	
+	return "", false
+}
+
+// OptionalAuth 可选认证中间件（不强制要求认证）
+func OptionalAuth(jwtService auth.JWTService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			// 没有认证头，继续处理但不设置用户信息
+			c.Next()
+			return
+		}
+		
+		token := auth.ExtractTokenFromHeader(authHeader)
+		if token == "" {
+			// 令牌格式错误，继续处理但不设置用户信息
+			c.Next()
+			return
+		}
+		
+		claims, err := jwtService.ValidateAccessToken(token)
+		if err != nil {
+			// 令牌无效，继续处理但不设置用户信息
+			c.Next()
+			return
+		}
+		
+		// 设置用户信息到上下文
+		c.Set("user_id", claims.UserID)
+		c.Set("username", claims.Username)
+		c.Set("email", claims.Email)
+		
+		c.Next()
+	}
+}
+
+// RequireRole 角色验证中间件（为将来的角色系统预留）
+func RequireRole(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 这里可以实现角色验证逻辑
+		// 目前只是一个占位符
+		c.Next()
+	}
+}
+
+// CORS 跨域中间件
+func CORS() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		method := c.Request.Method
+		origin := c.Request.Header.Get("Origin")
+		
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token,Authorization,Token,X-Requested-With")
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.Header("Access-Control-Expose-Headers", "Content-Length,Access-Control-Allow-Origin,Access-Control-Allow-Headers,Content-Type")
+		}
+		
+		if method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		
+		c.Next()
+	}
+}
+
+// RateLimit 限流中间件（简单版本）
+func RateLimit() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 这里可以实现限流逻辑
+		// 目前只是一个占位符
+		c.Next()
+	}
+}
+
+// RequestID 请求ID中间件
+func RequestID() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			// 生成简单的请求ID（使用时间戳）
+			requestID = strconv.FormatInt(time.Now().Unix(), 36)
+		}
+		
+		c.Set("request_id", requestID)
+		c.Header("X-Request-ID", requestID)
+		
 		c.Next()
 	}
 } 

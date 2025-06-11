@@ -6,21 +6,24 @@ import (
 	"time"
 
 	"temp-mailbox-service/internal/domain/user"
+	"temp-mailbox-service/internal/infrastructure/database"
 
 	"gorm.io/gorm"
 )
 
-// userRepository GORM用户仓储实现
+// userRepository 用户仓储实现
 type userRepository struct {
 	db *gorm.DB
 }
 
-// NewUserRepository 创建新的用户仓储实例
-func NewUserRepository(db *gorm.DB) user.Repository {
-	return &userRepository{db: db}
+// NewUserRepository 创建用户仓储实例
+func NewUserRepository() user.Repository {
+	return &userRepository{
+		db: database.GetDB(),
+	}
 }
 
-// Create 创建新用户
+// Create 创建用户
 func (r *userRepository) Create(ctx context.Context, u *user.User) error {
 	return r.db.WithContext(ctx).Create(u).Error
 }
