@@ -1,0 +1,197 @@
+﻿# 涓存椂閭绯荤粺 Makefile (Windows 鐗堟湰)
+# 绠€鍖栫増鏈紝鍏煎Windows鐜
+
+# 鍙橀噺瀹氫箟
+APP_NAME := temp-mailbox-service
+BACKEND_DIR := backend
+BIN_DIR := $(BACKEND_DIR)/bin
+
+.PHONY: help
+help: ## 鏄剧ず甯姪淇℃伅
+	@echo "涓存椂閭绯荤粺 - 鍙敤鍛戒护:"
+	@echo ""
+	@echo "寮€鍙戝懡浠?"
+	@echo "  setup          鍒濆鍖栧紑鍙戠幆澧?
+	@echo "  dev            鍚姩寮€鍙戞湇鍔″櫒锛堢儹閲嶈浇锛?
+	@echo "  run            鐩存帴杩愯鏈嶅姟鍣?
+	@echo "  worker         杩愯鍚庡彴浠诲姟鏈嶅姟"
+	@echo ""
+	@echo "鏋勫缓鍛戒护:"
+	@echo "  build          鏋勫缓鎵€鏈変簩杩涘埗鏂囦欢"
+	@echo "  build-server   鏋勫缓鏈嶅姟鍣ㄤ簩杩涘埗鏂囦欢"
+	@echo "  build-worker   鏋勫缓鍚庡彴浠诲姟浜岃繘鍒舵枃浠?
+	@echo ""
+	@echo "娴嬭瘯鍛戒护:"
+	@echo "  test           杩愯鎵€鏈夋祴璇?
+	@echo "  test-coverage  杩愯娴嬭瘯骞剁敓鎴愯鐩栫巼鎶ュ憡"
+	@echo ""
+	@echo "鏁版嵁搴撳懡浠?"
+	@echo "  db-migrate     鎵ц鏁版嵁搴撹縼绉?
+	@echo "  db-seed        濉厖娴嬭瘯鏁版嵁"
+	@echo "  db-reset       閲嶇疆鏁版嵁搴?
+	@echo ""
+	@echo "浠ｇ爜璐ㄩ噺:"
+	@echo "  fmt            鏍煎紡鍖栦唬鐮?
+	@echo "  vet            杩愯闈欐€佸垎鏋?
+	@echo "  tidy           鏁寸悊渚濊禆"
+	@echo ""
+	@echo "Docker鍛戒护:"
+	@echo "  docker-up      鍚姩Docker寮€鍙戠幆澧?
+	@echo "  docker-down    鍋滄Docker寮€鍙戠幆澧?
+	@echo ""
+	@echo "宸ュ叿鍛戒护:"
+	@echo "  gen-env        鐢熸垚鐜閰嶇疆鏂囦欢"
+	@echo "  clean          娓呯悊鏋勫缓鏂囦欢"
+	@echo "  install-tools  瀹夎寮€鍙戝伐鍏?
+
+##@ 寮€鍙戝懡浠?
+
+.PHONY: setup
+setup: ## 鍒濆鍖栧紑鍙戠幆澧?
+	@echo "馃敡 鍒濆鍖栧紑鍙戠幆澧?.."
+	@cd $(BACKEND_DIR) && go mod download
+	@cd $(BACKEND_DIR) && go mod tidy
+	@echo "鉁?寮€鍙戠幆澧冨垵濮嬪寲瀹屾垚"
+
+.PHONY: dev
+dev: ## 鍚姩寮€鍙戞湇鍔″櫒锛堢儹閲嶈浇锛?
+	@echo "馃殌 鍚姩寮€鍙戞湇鍔″櫒..."
+	@cd $(BACKEND_DIR) && air
+
+.PHONY: run
+run: ## 鐩存帴杩愯鏈嶅姟鍣?
+	@echo "馃殌 鍚姩鏈嶅姟鍣?.."
+	@cd $(BACKEND_DIR) && go run cmd/server/main.go
+
+.PHONY: worker
+worker: ## 杩愯鍚庡彴浠诲姟鏈嶅姟
+	@echo "鈿欙笍 鍚姩鍚庡彴浠诲姟鏈嶅姟..."
+	@cd $(BACKEND_DIR) && go run cmd/worker/main.go
+
+##@ 鏋勫缓鍛戒护
+
+.PHONY: build
+build: build-server build-worker ## 鏋勫缓鎵€鏈変簩杩涘埗鏂囦欢
+
+.PHONY: build-server
+build-server: ## 鏋勫缓鏈嶅姟鍣ㄤ簩杩涘埗鏂囦欢
+	@echo "馃敤 鏋勫缓鏈嶅姟鍣?.."
+	@if not exist "$(BIN_DIR)" mkdir "$(BIN_DIR)"
+	@cd $(BACKEND_DIR) && go build -o bin/server.exe cmd/server/main.go
+	@echo "鉁?鏈嶅姟鍣ㄦ瀯寤哄畬鎴? $(BIN_DIR)/server.exe"
+
+.PHONY: build-worker
+build-worker: ## 鏋勫缓鍚庡彴浠诲姟浜岃繘鍒舵枃浠?
+	@echo "馃敤 鏋勫缓鍚庡彴浠诲姟鏈嶅姟..."
+	@if not exist "$(BIN_DIR)" mkdir "$(BIN_DIR)"
+	@cd $(BACKEND_DIR) && go build -o bin/worker.exe cmd/worker/main.go
+	@echo "鉁?鍚庡彴浠诲姟鏈嶅姟鏋勫缓瀹屾垚: $(BIN_DIR)/worker.exe"
+
+##@ 娴嬭瘯鍛戒护
+
+.PHONY: test
+test: ## 杩愯鎵€鏈夋祴璇?
+	@echo "馃И 杩愯娴嬭瘯..."
+	@cd $(BACKEND_DIR) && go test ./... -v
+
+.PHONY: test-coverage
+test-coverage: ## 杩愯娴嬭瘯骞剁敓鎴愯鐩栫巼鎶ュ憡
+	@echo "馃搳 鐢熸垚娴嬭瘯瑕嗙洊鐜囨姤鍛?.."
+	@cd $(BACKEND_DIR) && go test ./... -coverprofile=coverage.out
+	@cd $(BACKEND_DIR) && go tool cover -html=coverage.out -o coverage.html
+	@echo "鉁?瑕嗙洊鐜囨姤鍛婄敓鎴愬畬鎴? $(BACKEND_DIR)/coverage.html"
+
+##@ 鏁版嵁搴撳懡浠?
+
+.PHONY: db-migrate
+db-migrate: ## 鎵ц鏁版嵁搴撹縼绉?
+	@echo "馃梽锔?鎵ц鏁版嵁搴撹縼绉?.."
+	@cd $(BACKEND_DIR) && go run scripts/migrate.go
+
+.PHONY: db-seed
+db-seed: ## 濉厖娴嬭瘯鏁版嵁
+	@echo "馃尡 濉厖娴嬭瘯鏁版嵁..."
+	@cd $(BACKEND_DIR) && go run scripts/seed.go
+
+.PHONY: db-reset
+db-reset: ## 閲嶇疆鏁版嵁搴擄紙鍒犻櫎骞堕噸鏂拌縼绉伙級
+	@echo "馃攧 閲嶇疆鏁版嵁搴?.."
+	@if exist "$(BACKEND_DIR)\dev.db" del "$(BACKEND_DIR)\dev.db"
+	@$(MAKE) db-migrate
+	@$(MAKE) db-seed
+
+##@ 浠ｇ爜璐ㄩ噺
+
+.PHONY: fmt
+fmt: ## 鏍煎紡鍖栦唬鐮?
+	@echo "馃拝 鏍煎紡鍖栦唬鐮?.."
+	@cd $(BACKEND_DIR) && go fmt ./...
+	@echo "鉁?浠ｇ爜鏍煎紡鍖栧畬鎴?
+
+.PHONY: vet
+vet: ## 杩愯go vet妫€鏌?
+	@echo "馃攳 杩愯闈欐€佸垎鏋?.."
+	@cd $(BACKEND_DIR) && go vet ./...
+
+.PHONY: tidy
+tidy: ## 鏁寸悊渚濊禆
+	@echo "馃摝 鏁寸悊渚濊禆..."
+	@cd $(BACKEND_DIR) && go mod tidy
+
+##@ Docker鍛戒护
+
+.PHONY: docker-up
+docker-up: ## 鍚姩Docker寮€鍙戠幆澧?
+	@echo "馃惓 鍚姩Docker寮€鍙戠幆澧?.."
+	@docker-compose -f docker-compose.dev.yml up -d
+
+.PHONY: docker-down
+docker-down: ## 鍋滄Docker寮€鍙戠幆澧?
+	@echo "馃惓 鍋滄Docker寮€鍙戠幆澧?.."
+	@docker-compose -f docker-compose.dev.yml down
+
+.PHONY: docker-logs
+docker-logs: ## 鏌ョ湅Docker鏃ュ織
+	@docker-compose -f docker-compose.dev.yml logs -f
+
+##@ 宸ュ叿鍛戒护
+
+.PHONY: install-tools
+install-tools: ## 瀹夎寮€鍙戝伐鍏?
+	@echo "馃敡 瀹夎寮€鍙戝伐鍏?.."
+	@go install github.com/cosmtrek/air@latest
+	@echo "鉁?寮€鍙戝伐鍏峰畨瑁呭畬鎴?
+
+.PHONY: gen-env
+gen-env: ## 鐢熸垚鐜閰嶇疆鏂囦欢
+	@echo "馃摑 鐢熸垚鐜閰嶇疆鏂囦欢..."
+	@if not exist ".env.dev" ( \
+		copy ".env.example" ".env.dev" >nul 2>&1 && \
+		echo "鉁?鍒涘缓 .env.dev 鏂囦欢" \
+	) else ( \
+		echo "鈿狅笍  .env.dev 鏂囦欢宸插瓨鍦? \
+	)
+
+.PHONY: clean
+clean: ## 娓呯悊鏋勫缓鏂囦欢
+	@echo "馃Ч 娓呯悊鏋勫缓鏂囦欢..."
+	@if exist "$(BIN_DIR)" rmdir /s /q "$(BIN_DIR)" 2>nul
+	@if exist "$(BACKEND_DIR)\coverage.out" del "$(BACKEND_DIR)\coverage.out" 2>nul
+	@if exist "$(BACKEND_DIR)\coverage.html" del "$(BACKEND_DIR)\coverage.html" 2>nul
+	@echo "鉁?娓呯悊瀹屾垚"
+
+##@ 蹇€熷懡浠ょ粍鍚?
+
+.PHONY: quick-start
+quick-start: gen-env install-tools setup ## 蹇€熷惎鍔ㄥ紑鍙戠幆澧?
+	@echo "馃帀 寮€鍙戠幆澧冨凡鍑嗗灏辩华锛?
+	@echo "馃挕 鎻愮ず:"
+	@echo "   - 浣跨敤 'make docker-up' 鍚姩鏁版嵁搴撶瓑鏈嶅姟"
+	@echo "   - 浣跨敤 'make dev' 鍚姩鐑噸杞藉紑鍙戞湇鍔″櫒"
+	@echo "   - 浣跨敤 'make run' 鐩存帴杩愯鏈嶅姟鍣?
+
+.PHONY: quick-test
+quick-test: fmt vet test ## 蹇€熸祴璇曪紙鏍煎紡鍖?+ 妫€鏌?+ 娴嬭瘯锛?
+
+# 榛樿鐩爣
+.DEFAULT_GOAL := help 
