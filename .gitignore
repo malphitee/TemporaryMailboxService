@@ -1,0 +1,191 @@
+# 编译后的二进制文件
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/backend/cmd/server/server
+/backend/cmd/worker/worker
+
+# Go 测试文件
+*.test
+*.out
+coverage.txt
+*.cover
+
+# Go 模块
+go.work
+go.work.sum
+
+# 依赖目录
+vendor/
+
+# Go 编译缓存
+.cache/
+
+# 构建目录
+build/
+dist/
+
+# 日志文件
+*.log
+logs/
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 环境配置文件 (保留.example)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.dev
+backend/configs/.env.dev
+backend/configs/.env.production
+!.env.example
+!backend/configs/.env.example
+
+# 前端相关
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# 前端构建输出
+/frontend/dist/
+/frontend/dist-ssr/
+/frontend/build/
+
+# 前端缓存
+.vite/
+.nuxt/
+.next/
+.umi/
+.cache/
+.parcel-cache/
+
+# 前端测试
+coverage/
+.nyc_output/
+
+# 运行时数据
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 依赖锁定文件变更 (可选择性忽略)
+# package-lock.json
+# yarn.lock
+
+# IDE 和编辑器
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+*.swp
+*.swo
+*.un~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# 操作系统生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.project
+.classpath
+
+# Linux
+*.tmp
+
+# 临时文件
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Docker 相关
+.dockerignore
+
+# SSL 证书
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+deploy/ssl/*
+!deploy/ssl/.gitkeep
+
+# 备份文件
+*.backup
+*.bak
+*.orig
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 监控和分析
+.monitor/
+.profile/
+
+# 本地测试数据
+test-data/
+mock-data/
+
+# 上传文件
+uploads/
+attachments/
+
+# Redis 数据文件
+dump.rdb
+
+# 性能分析文件
+*.prof
+*.pprof
+
+# Air 热重载
+.air.toml.local
+
+# 本地开发脚本
+local.sh
+local.bat 

@@ -1,0 +1,247 @@
+# 临时邮箱系统 Makefile
+# 提供开发、构建、测试、部署等常用命令
+
+# 变量定义
+APP_NAME := temp-mailbox-service
+VERSION := $(shell git describe --tags --always --dirty 2>nul || echo "dev")
+BUILD_TIME := $(shell powershell -Command "Get-Date -Format 'yyyy-MM-dd HH:mm'" 2>nul || echo "unknown")
+GO_VERSION := $(shell go version 2>nul | powershell -Command "$$input.Split(' ')[2]" || echo "unknown")
+
+# Go 相关路径
+BACKEND_DIR := backend
+SERVER_MAIN := $(BACKEND_DIR)/cmd/server/main.go
+WORKER_MAIN := $(BACKEND_DIR)/cmd/worker/main.go
+BIN_DIR := $(BACKEND_DIR)/bin
+
+# Docker 相关
+DOCKER_IMAGE := $(APP_NAME)
+DOCKER_TAG := latest
+
+# 构建标记
+LDFLAGS := -X 'main.Version=$(VERSION)' \
+           -X 'main.BuildTime=$(BUILD_TIME)' \
+           -X 'main.GoVersion=$(GO_VERSION)'
+
+.PHONY: help
+help: ## 显示帮助信息
+	@echo "临时邮箱系统 - 可用命令:"
+	@echo ""
+	@powershell -Command "Get-Content Makefile | Select-String '##@|^[a-zA-Z_-]+:.*##' | ForEach-Object { if ($$_.Line -match '^##@(.*)') { Write-Host ''; Write-Host $$matches[1] -ForegroundColor Yellow } else { $$parts = $$_.Line -split ':.*?##'; if ($$parts.Length -eq 2) { Write-Host ('  {0,-15} {1}' -f $$parts[0], $$parts[1]) -ForegroundColor Cyan } } }"
+
+##@ 开发命令
+
+.PHONY: setup
+setup: ## 初始化开发环境
+	@echo "🔧 初始化开发环境..."
+	@cd $(BACKEND_DIR) && go mod download
+	@cd $(BACKEND_DIR) && go mod tidy
+	@echo "✅ 开发环境初始化完成"
+
+.PHONY: dev
+dev: ## 启动开发服务器（热重载）
+	@echo "🚀 启动开发服务器..."
+	@cd $(BACKEND_DIR) && air
+
+.PHONY: run
+run: ## 直接运行服务器
+	@echo "🚀 启动服务器..."
+	@cd $(BACKEND_DIR) && go run $(SERVER_MAIN)
+
+.PHONY: worker
+worker: ## 运行后台任务服务
+	@echo "⚙️ 启动后台任务服务..."
+	@cd $(BACKEND_DIR) && go run $(WORKER_MAIN)
+
+##@ 构建命令
+
+.PHONY: build
+build: build-server build-worker ## 构建所有二进制文件
+
+.PHONY: build-server
+build-server: ## 构建服务器二进制文件
+	@echo "🔨 构建服务器..."
+	@mkdir -p $(BIN_DIR)
+	@cd $(BACKEND_DIR) && go build -ldflags="$(LDFLAGS)" -o bin/server cmd/server/main.go
+	@echo "✅ 服务器构建完成: $(BIN_DIR)/server"
+
+.PHONY: build-worker
+build-worker: ## 构建后台任务二进制文件
+	@echo "🔨 构建后台任务服务..."
+	@mkdir -p $(BIN_DIR)
+	@cd $(BACKEND_DIR) && go build -ldflags="$(LDFLAGS)" -o bin/worker cmd/worker/main.go
+	@echo "✅ 后台任务服务构建完成: $(BIN_DIR)/worker"
+
+.PHONY: build-linux
+build-linux: ## 构建Linux版本
+	@echo "🐧 构建Linux版本..."
+	@mkdir -p $(BIN_DIR)
+	@cd $(BACKEND_DIR) && GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" -o bin/server-linux cmd/server/main.go
+	@cd $(BACKEND_DIR) && GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" -o bin/worker-linux cmd/worker/main.go
+	@echo "✅ Linux版本构建完成"
+
+##@ 测试命令
+
+.PHONY: test
+test: ## 运行所有测试
+	@echo "🧪 运行测试..."
+	@cd $(BACKEND_DIR) && go test ./... -v
+
+.PHONY: test-coverage
+test-coverage: ## 运行测试并生成覆盖率报告
+	@echo "📊 生成测试覆盖率报告..."
+	@cd $(BACKEND_DIR) && go test ./... -coverprofile=coverage.out
+	@cd $(BACKEND_DIR) && go tool cover -html=coverage.out -o coverage.html
+	@echo "✅ 覆盖率报告生成完成: $(BACKEND_DIR)/coverage.html"
+
+.PHONY: test-race
+test-race: ## 运行竞态条件检测
+	@echo "🏃 运行竞态条件检测..."
+	@cd $(BACKEND_DIR) && go test -race ./...
+
+.PHONY: benchmark
+benchmark: ## 运行基准测试
+	@echo "⚡ 运行基准测试..."
+	@cd $(BACKEND_DIR) && go test -bench=. ./...
+
+##@ 数据库命令
+
+.PHONY: db-migrate
+db-migrate: ## 执行数据库迁移
+	@echo "🗄️ 执行数据库迁移..."
+	@cd $(BACKEND_DIR) && go run scripts/migrate.go
+
+.PHONY: db-seed
+db-seed: ## 填充测试数据
+	@echo "🌱 填充测试数据..."
+	@cd $(BACKEND_DIR) && go run scripts/seed.go
+
+.PHONY: db-reset
+db-reset: ## 重置数据库（删除并重新迁移）
+	@echo "🔄 重置数据库..."
+	@if exist "$(BACKEND_DIR)\dev.db" del "$(BACKEND_DIR)\dev.db"
+	@$(MAKE) db-migrate
+	@$(MAKE) db-seed
+
+##@ 代码质量
+
+.PHONY: fmt
+fmt: ## 格式化代码
+	@echo "💅 格式化代码..."
+	@cd $(BACKEND_DIR) && go fmt ./...
+	@echo "✅ 代码格式化完成"
+
+.PHONY: lint
+lint: ## 运行代码检查
+	@echo "🔍 运行代码检查..."
+	@cd $(BACKEND_DIR) && golangci-lint run
+
+.PHONY: vet
+vet: ## 运行go vet检查
+	@echo "🔍 运行静态分析..."
+	@cd $(BACKEND_DIR) && go vet ./...
+
+.PHONY: tidy
+tidy: ## 整理依赖
+	@echo "📦 整理依赖..."
+	@cd $(BACKEND_DIR) && go mod tidy
+
+.PHONY: check
+check: fmt vet lint test ## 运行所有代码检查
+
+##@ Docker命令
+
+.PHONY: docker-build
+docker-build: ## 构建Docker镜像
+	@echo "🐳 构建Docker镜像..."
+	@docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) -f $(BACKEND_DIR)/Dockerfile $(BACKEND_DIR)
+	@echo "✅ Docker镜像构建完成: $(DOCKER_IMAGE):$(DOCKER_TAG)"
+
+.PHONY: docker-build-dev
+docker-build-dev: ## 构建开发环境Docker镜像
+	@echo "🐳 构建开发环境Docker镜像..."
+	@docker build -t $(DOCKER_IMAGE):dev -f $(BACKEND_DIR)/Dockerfile.dev $(BACKEND_DIR)
+
+.PHONY: docker-up
+docker-up: ## 启动Docker开发环境
+	@echo "🐳 启动Docker开发环境..."
+	@docker-compose -f docker-compose.dev.yml up -d
+
+.PHONY: docker-down
+docker-down: ## 停止Docker开发环境
+	@echo "🐳 停止Docker开发环境..."
+	@docker-compose -f docker-compose.dev.yml down
+
+.PHONY: docker-logs
+docker-logs: ## 查看Docker日志
+	@docker-compose -f docker-compose.dev.yml logs -f
+
+.PHONY: docker-clean
+docker-clean: ## 清理Docker资源
+	@echo "🧹 清理Docker资源..."
+	@docker-compose -f docker-compose.dev.yml down -v
+	@docker system prune -f
+
+##@ 部署命令
+
+.PHONY: deploy-prod
+deploy-prod: ## 部署到生产环境
+	@echo "🚀 部署到生产环境..."
+	@docker-compose -f docker-compose.prod.yml up -d --build
+
+.PHONY: deploy-stop
+deploy-stop: ## 停止生产环境
+	@docker-compose -f docker-compose.prod.yml down
+
+##@ 工具命令
+
+.PHONY: install-tools
+install-tools: ## 安装开发工具
+	@echo "🔧 安装开发工具..."
+	@go install github.com/cosmtrek/air@latest
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@echo "✅ 开发工具安装完成"
+
+.PHONY: gen-env
+gen-env: ## 生成环境配置文件
+	@echo "📝 生成环境配置文件..."
+	@if not exist ".env.dev" ( \
+		copy ".env.example" ".env.dev" >nul & \
+		echo "✅ 创建 .env.dev 文件" \
+	) else ( \
+		echo "⚠️  .env.dev 文件已存在" \
+	)
+
+.PHONY: clean
+clean: ## 清理构建文件
+	@echo "🧹 清理构建文件..."
+	@if exist "$(BIN_DIR)" rmdir /s /q "$(BIN_DIR)"
+	@if exist "$(BACKEND_DIR)\coverage.out" del "$(BACKEND_DIR)\coverage.out"
+	@if exist "$(BACKEND_DIR)\coverage.html" del "$(BACKEND_DIR)\coverage.html"
+	@if exist "$(BACKEND_DIR)\*.log" del "$(BACKEND_DIR)\*.log"
+	@echo "✅ 清理完成"
+
+.PHONY: version
+version: ## 显示版本信息
+	@echo "版本信息:"
+	@echo "  应用版本: $(VERSION)"
+	@echo "  构建时间: $(BUILD_TIME)"
+	@echo "  Go版本:  $(GO_VERSION)"
+
+##@ 快速命令组合
+
+.PHONY: quick-start
+quick-start: gen-env docker-up ## 快速启动开发环境
+	@echo "🎉 开发环境已启动！"
+	@echo "💡 提示:"
+	@echo "   - 后端API: http://localhost:8080"
+	@echo "   - 数据库已在Docker中运行"
+	@echo "   - 使用 'make dev' 启动热重载开发服务器"
+
+.PHONY: quick-test
+quick-test: fmt vet test ## 快速测试（格式化 + 检查 + 测试）
+
+.PHONY: quick-build
+quick-build: clean build ## 快速构建（清理 + 构建）
+
+# 默认目标
+.DEFAULT_GOAL := help 
