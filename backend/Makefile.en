@@ -1,0 +1,164 @@
+# Project Configuration
+PROJECT_NAME = temp-mailbox-service
+GO_VERSION = 1.24.2
+APP_VERSION = 0.1.0
+
+# Build Configuration
+BUILD_DIR = build
+BINARY_NAME = $(PROJECT_NAME)
+MAIN_PATH = ./cmd/server
+
+# Environment Configuration
+DEV_ENV_FILE = .env.dev
+
+# Default target
+.PHONY: all
+all: build
+
+# Help target
+.PHONY: help
+help:
+	@echo "Available targets:"
+	@echo "  help     - Show this help message"
+	@echo "  build    - Build the application"
+	@echo "  run      - Run the application"
+	@echo "  dev      - Run in development mode"
+	@echo "  clean    - Clean build files"
+	@echo "  deps     - Install dependencies"
+	@echo "  test     - Run all tests"
+	@echo "  test-unit  - Run unit tests only"
+	@echo "  test-integration - Run integration tests only"
+	@echo "  test-cover - Run tests with coverage"
+	@echo ""
+
+# Build targets
+.PHONY: build
+build:
+	@echo "Building $(PROJECT_NAME)..."
+	@mkdir -p $(BUILD_DIR)
+	@go build -ldflags "-X main.version=$(APP_VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	@echo "Build completed: $(BUILD_DIR)/$(BINARY_NAME)"
+
+.PHONY: build-linux
+build-linux:
+	@echo "Building $(PROJECT_NAME) for Linux..."
+	@mkdir -p $(BUILD_DIR)
+	@GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(APP_VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux $(MAIN_PATH)
+	@echo "Linux build completed: $(BUILD_DIR)/$(BINARY_NAME)-linux"
+
+.PHONY: build-windows
+build-windows:
+	@echo "Building $(PROJECT_NAME) for Windows..."
+	@mkdir -p $(BUILD_DIR)
+	@GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$(APP_VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME).exe $(MAIN_PATH)
+	@echo "Windows build completed: $(BUILD_DIR)/$(BINARY_NAME).exe"
+
+# Run targets
+.PHONY: run
+run: build
+	@echo "Running $(PROJECT_NAME)..."
+	@./$(BUILD_DIR)/$(BINARY_NAME)
+
+.PHONY: dev
+dev:
+	@echo "Running $(PROJECT_NAME) in development mode..."
+	@if [ -f $(DEV_ENV_FILE) ]; then \
+		echo "Loading environment from $(DEV_ENV_FILE)"; \
+	fi
+	@go run $(MAIN_PATH)
+
+# Test targets
+.PHONY: test
+test:
+	@echo "Running all tests..."
+	@go test ./... -v
+
+.PHONY: test-unit
+test-unit:
+	@echo "Running unit tests..."
+	@go test ./internal/infrastructure/config -v
+	@go test ./internal/infrastructure/auth -v
+
+.PHONY: test-integration
+test-integration:
+	@echo "Running integration tests..."
+	@go test ./internal -v
+
+.PHONY: test-cover
+test-cover:
+	@echo "Running tests with coverage..."
+	@go test ./... -coverprofile=coverage.out
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+.PHONY: test-db
+test-db:
+	@echo "Running database integration test..."
+	@go run cmd/real-db-test/main.go
+
+# Development targets
+.PHONY: deps
+deps:
+	@echo "Installing dependencies..."
+	@go mod download
+	@go mod tidy
+
+.PHONY: deps-update
+deps-update:
+	@echo "Updating dependencies..."
+	@go get -u ./...
+	@go mod tidy
+
+# Clean target
+.PHONY: clean
+clean:
+	@echo "Cleaning build files..."
+	@rm -rf $(BUILD_DIR)
+	@rm -f coverage.out coverage.html
+	@rm -f *.db
+	@echo "Clean completed"
+
+# Database targets
+.PHONY: db-migrate
+db-migrate:
+	@echo "Running database migration..."
+	@go run cmd/migrate/main.go
+
+.PHONY: db-reset
+db-reset:
+	@echo "Resetting database..."
+	@rm -f *.db
+	@echo "Database reset completed"
+
+# Format and lint
+.PHONY: fmt
+fmt:
+	@echo "Formatting code..."
+	@go fmt ./...
+
+.PHONY: vet
+vet:
+	@echo "Running go vet..."
+	@go vet ./...
+
+# Install global dependencies
+.PHONY: install-tools
+install-tools:
+	@echo "Installing development tools..."
+	@go install -a github.com/air-verse/air@latest
+
+# Development server with hot reload
+.PHONY: air
+air:
+	@echo "Starting development server with hot reload..."
+	@air
+
+.PHONY: docker-build
+docker-build:
+	@echo "Building Docker image..."
+	@docker build -t $(PROJECT_NAME):$(APP_VERSION) .
+
+.PHONY: docker-run
+docker-run:
+	@echo "Running Docker container..."
+	@docker run -p 8080:8080 $(PROJECT_NAME):$(APP_VERSION) 
