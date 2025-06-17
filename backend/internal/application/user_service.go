@@ -11,7 +11,7 @@ import (
 // UserService 用户服务接口
 type UserService interface {
 	// 认证相关
-	RegisterUser(ctx context.Context, req *user.CreateUserRequest) (*user.UserResponse, error)
+	RegisterUser(ctx context.Context, req *user.CreateUserRequest) (*LoginResponse, error)
 	LoginUser(ctx context.Context, req *user.LoginRequest) (*LoginResponse, error)
 	
 	// 用户管理
@@ -41,7 +41,7 @@ func NewUserService(userRepo user.Repository, jwtService auth.JWTService) UserSe
 }
 
 // RegisterUser 用户注册
-func (s *userService) RegisterUser(ctx context.Context, req *user.CreateUserRequest) (*user.UserResponse, error) {
+func (s *userService) RegisterUser(ctx context.Context, req *user.CreateUserRequest) (*LoginResponse, error) {
 	// 检查邮箱是否已存在
 	exists, err := s.userRepo.ExistsByEmail(ctx, req.Email)
 	if err != nil {
@@ -76,8 +76,7 @@ func (s *userService) RegisterUser(ctx context.Context, req *user.CreateUserRequ
 		Username:  req.Username,
 		Email:     req.Email,
 		Password:  hashedPassword,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
+		Nickname:  req.Nickname,
 		IsActive:  true,
 	}
 	
@@ -86,7 +85,16 @@ func (s *userService) RegisterUser(ctx context.Context, req *user.CreateUserRequ
 		return nil, fmt.Errorf("创建用户失败: %w", err)
 	}
 	
-	return newUser.ToResponse(), nil
+	// 注册成功后自动生成token
+	tokenPair, err := s.jwtService.GenerateTokens(newUser.ID, newUser.Username, newUser.Email)
+	if err != nil {
+		return nil, fmt.Errorf("生成令牌失败: %w", err)
+	}
+	
+	return &LoginResponse{
+		User:  newUser.ToResponse(),
+		Token: tokenPair,
+	}, nil
 }
 
 // LoginUser 用户登录
@@ -152,8 +160,7 @@ func (s *userService) UpdateUserProfile(ctx context.Context, userID uint, req *u
 	}
 	
 	// 更新用户信息
-	existingUser.FirstName = req.FirstName
-	existingUser.LastName = req.LastName
+	existingUser.Nickname = req.Nickname
 	existingUser.Avatar = req.Avatar
 	existingUser.TimeZone = req.TimeZone
 	existingUser.Language = req.Language

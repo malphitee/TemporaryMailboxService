@@ -41,9 +41,9 @@ func (h *UserHandler) Register(c *gin.Context) {
 	// 绑定JSON请求体
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "请求参数格式错误",
-			"code":  "INVALID_REQUEST_FORMAT",
-			"details": err.Error(),
+			"code": 1001,
+			"message": "请求参数格式错误",
+			"data": nil,
 		})
 		return
 	}
@@ -51,26 +51,28 @@ func (h *UserHandler) Register(c *gin.Context) {
 	// 验证请求参数
 	if err := h.validator.Struct(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "请求参数验证失败",
-			"code":  "VALIDATION_FAILED",
-			"details": err.Error(),
+			"code": 1002,
+			"message": "请求参数验证失败",
+			"data": nil,
 		})
 		return
 	}
 	
 	// 调用用户服务注册
-	userResp, err := h.userService.RegisterUser(c.Request.Context(), &req)
+	loginResp, err := h.userService.RegisterUser(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-			"code":  "REGISTRATION_FAILED",
+		c.JSON(http.StatusOK, gin.H{
+			"code": 1003,
+			"message": err.Error(),
+			"data": nil,
 		})
 		return
 	}
 	
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
 		"message": "用户注册成功",
-		"data":    userResp,
+		"data": loginResp,
 	})
 }
 
@@ -81,9 +83,9 @@ func (h *UserHandler) Login(c *gin.Context) {
 	// 绑定JSON请求体
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "请求参数格式错误",
-			"code":  "INVALID_REQUEST_FORMAT",
-			"details": err.Error(),
+			"code": 1101,
+			"message": "请求参数格式错误",
+			"data": nil,
 		})
 		return
 	}
@@ -91,9 +93,9 @@ func (h *UserHandler) Login(c *gin.Context) {
 	// 验证请求参数
 	if err := h.validator.Struct(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "请求参数验证失败",
-			"code":  "VALIDATION_FAILED",
-			"details": err.Error(),
+			"code": 1102,
+			"message": "请求参数验证失败",
+			"data": nil,
 		})
 		return
 	}
@@ -101,16 +103,18 @@ func (h *UserHandler) Login(c *gin.Context) {
 	// 调用用户服务登录
 	loginResp, err := h.userService.LoginUser(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": err.Error(),
-			"code":  "LOGIN_FAILED",
+		c.JSON(http.StatusOK, gin.H{
+			"code": 1103,
+			"message": err.Error(),
+			"data": nil,
 		})
 		return
 	}
 	
 	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
 		"message": "登录成功",
-		"data":    loginResp,
+		"data": loginResp,
 	})
 }
 
@@ -120,8 +124,9 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	userID, err := middleware.GetUserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "获取用户信息失败",
-			"code":  "UNAUTHORIZED",
+			"code": 1201,
+			"message": "获取用户信息失败",
+			"data": nil,
 		})
 		return
 	}
@@ -129,16 +134,18 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	// 调用用户服务获取资料
 	userResp, err := h.userService.GetUserProfile(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": err.Error(),
-			"code":  "USER_NOT_FOUND",
+		c.JSON(http.StatusOK, gin.H{
+			"code": 1202,
+			"message": err.Error(),
+			"data": nil,
 		})
 		return
 	}
 	
 	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
 		"message": "获取用户资料成功",
-		"data":    userResp,
+		"data": userResp,
 	})
 }
 
@@ -148,8 +155,9 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	userID, err := middleware.GetUserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "获取用户信息失败",
-			"code":  "UNAUTHORIZED",
+			"code": 1301,
+			"message": "获取用户信息失败",
+			"data": nil,
 		})
 		return
 	}
@@ -159,9 +167,9 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	// 绑定JSON请求体
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "请求参数格式错误",
-			"code":  "INVALID_REQUEST_FORMAT",
-			"details": err.Error(),
+			"code": 1302,
+			"message": "请求参数格式错误",
+			"data": nil,
 		})
 		return
 	}
@@ -169,9 +177,9 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	// 验证请求参数
 	if err := h.validator.Struct(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "请求参数验证失败",
-			"code":  "VALIDATION_FAILED",
-			"details": err.Error(),
+			"code": 1303,
+			"message": "请求参数验证失败",
+			"data": nil,
 		})
 		return
 	}
@@ -179,16 +187,18 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	// 调用用户服务更新资料
 	userResp, err := h.userService.UpdateUserProfile(c.Request.Context(), userID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-			"code":  "UPDATE_FAILED",
+		c.JSON(http.StatusOK, gin.H{
+			"code": 1304,
+			"message": err.Error(),
+			"data": nil,
 		})
 		return
 	}
 	
 	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
 		"message": "更新用户资料成功",
-		"data":    userResp,
+		"data": userResp,
 	})
 }
 
@@ -198,8 +208,9 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 	userID, err := middleware.GetUserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "获取用户信息失败",
-			"code":  "UNAUTHORIZED",
+			"code": 1401,
+			"message": "获取用户信息失败",
+			"data": nil,
 		})
 		return
 	}
@@ -209,9 +220,9 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 	// 绑定JSON请求体
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "请求参数格式错误",
-			"code":  "INVALID_REQUEST_FORMAT",
-			"details": err.Error(),
+			"code": 1402,
+			"message": "请求参数格式错误",
+			"data": nil,
 		})
 		return
 	}
@@ -219,23 +230,26 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 	// 验证请求参数
 	if err := h.validator.Struct(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "请求参数验证失败",
-			"code":  "VALIDATION_FAILED",
-			"details": err.Error(),
+			"code": 1403,
+			"message": "请求参数验证失败",
+			"data": nil,
 		})
 		return
 	}
 	
 	// 调用用户服务修改密码
 	if err := h.userService.ChangePassword(c.Request.Context(), userID, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-			"code":  "CHANGE_PASSWORD_FAILED",
+		c.JSON(http.StatusOK, gin.H{
+			"code": 1404,
+			"message": err.Error(),
+			"data": nil,
 		})
 		return
 	}
 	
 	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
 		"message": "密码修改成功",
+		"data": nil,
 	})
 } 

@@ -22,9 +22,8 @@ type User struct {
 	IsActive bool `json:"is_active" gorm:"default:true"`
 	
 	// 用户资料
-	FirstName string `json:"first_name" gorm:"size:50" validate:"max=50"`
-	LastName  string `json:"last_name" gorm:"size:50" validate:"max=50"`
-	Avatar    string `json:"avatar" gorm:"size:255"`
+	Nickname string `json:"nickname" gorm:"size:50" validate:"max=50"`
+	Avatar   string `json:"avatar" gorm:"size:255"`
 	
 	// 认证相关
 	LastLoginAt    *time.Time `json:"last_login_at"`
@@ -43,10 +42,10 @@ func (User) TableName() string {
 
 // GetFullName 获取用户全名
 func (u *User) GetFullName() string {
-	if u.FirstName == "" && u.LastName == "" {
+	if u.Nickname == "" {
 		return u.Username
 	}
-	return u.FirstName + " " + u.LastName
+	return u.Nickname
 }
 
 // IsPasswordResetValid 检查密码重置令牌是否有效
@@ -59,20 +58,18 @@ func (u *User) IsPasswordResetValid() bool {
 
 // CreateUserRequest 创建用户请求
 type CreateUserRequest struct {
-	Username  string `json:"username" validate:"required,min=3,max=50"`
-	Email     string `json:"email" validate:"required,email,max=100"`
-	Password  string `json:"password" validate:"required,min=6"`
-	FirstName string `json:"first_name" validate:"max=50"`
-	LastName  string `json:"last_name" validate:"max=50"`
+	Username string `json:"username" validate:"required,min=3,max=50"`
+	Email    string `json:"email" validate:"required,email,max=100"`
+	Password string `json:"password" validate:"required,min=6"`
+	Nickname string `json:"nickname" validate:"max=50"`
 }
 
 // UpdateUserRequest 更新用户请求
 type UpdateUserRequest struct {
-	FirstName string `json:"first_name" validate:"max=50"`
-	LastName  string `json:"last_name" validate:"max=50"`
-	Avatar    string `json:"avatar" validate:"max=255"`
-	TimeZone  string `json:"timezone" validate:"max=50"`
-	Language  string `json:"language" validate:"max=10"`
+	Nickname string `json:"nickname" validate:"max=50"`
+	Avatar   string `json:"avatar" validate:"max=255"`
+	TimeZone string `json:"timezone" validate:"max=50"`
+	Language string `json:"language" validate:"max=10"`
 }
 
 // ChangePasswordRequest 修改密码请求
@@ -95,8 +92,7 @@ type UserResponse struct {
 	Username    string     `json:"username"`
 	Email       string     `json:"email"`
 	IsActive    bool       `json:"is_active"`
-	FirstName   string     `json:"first_name"`
-	LastName    string     `json:"last_name"`
+	Nickname    string     `json:"nickname"`
 	Avatar      string     `json:"avatar"`
 	LastLoginAt *time.Time `json:"last_login_at"`
 	TimeZone    string     `json:"timezone"`
@@ -112,8 +108,7 @@ func (u *User) ToResponse() *UserResponse {
 		Username:    u.Username,
 		Email:       u.Email,
 		IsActive:    u.IsActive,
-		FirstName:   u.FirstName,
-		LastName:    u.LastName,
+		Nickname:    u.Nickname,
 		Avatar:      u.Avatar,
 		LastLoginAt: u.LastLoginAt,
 		TimeZone:    u.TimeZone,
